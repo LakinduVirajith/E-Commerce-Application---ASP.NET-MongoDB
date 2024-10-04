@@ -175,9 +175,57 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             }
         }
 
-        public async Task<ActionResult<UserAuthToken>> RefreshToken(string refreshToken)
+        public async Task<ActionResult<UserAuthToken>> RefreshToken(UserRefreshToken request)
         {
-            throw new NotImplementedException();
+            try
+            {
+                // FIND THE USER BY THE REFRESH TOKEN
+                var user = await _usersCollection.Find(u => u.AuthTokens.Any(t => t.RefreshToken == request.RefreshToken && t.DeviceId == request.DeviceId)).FirstOrDefaultAsync();
+
+                // CHECK IF USER EXISTS AND IF REFRESH TOKEN IS VALID
+                if (user == null)
+                {
+                    return new BadRequestObjectResult("Invalid refresh token.");
+                }
+
+                // FIND THE AUTH TOKEN BY DEVICE ID
+                var authToken = user.AuthTokens.FirstOrDefault(t => t.RefreshToken == request.RefreshToken && t.DeviceId == request.DeviceId);
+                if (authToken == null || authToken.RefreshTokenExpiry < DateTime.UtcNow)
+                {
+                    return new BadRequestObjectResult("Refresh token is invalid or expired.");
+                }
+
+                // GENERATE NEW ACCESS TOKEN AND REFRESH TOKEN
+                var newToken = _tokenService.GenerateToken(user);
+                var newRefreshToken = _tokenService.GenerateRefreshToken(user);
+
+                // UPDATE THE AUTH TOKEN WITH NEW TOKENS
+                authToken.AccessToken = newToken;
+                authToken.RefreshToken = newRefreshToken;
+                authToken.Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes);
+                authToken.RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays);
+                authToken.LastUsed = DateTime.UtcNow;
+
+                // UPDATE USER IN THE DATABASE
+                await _usersCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
+
+                // RETURN THE NEW TOKENS
+                var authTokenResponse = new UserAuthToken
+                {
+                    AccessToken = newToken,
+                    RefreshToken = newRefreshToken,
+                };
+
+                return new OkObjectResult(authTokenResponse);
+            }
+            catch (Exception)
+            {
+                // RETURN A FRIENDLY SERVER ERROR MESSAGE
+                return new ObjectResult("An error occurred while refreshing the token. Please try again later.")
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
         }
 
         public async Task<IActionResult> LogoutUser()

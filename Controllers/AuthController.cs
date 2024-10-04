@@ -44,9 +44,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Controllers
         /// <summary> refreshes the access token using a valid refresh token. </summary>
         // PUT: api/v1/auth/refresh-token
         [HttpPut("refresh-token")]
-        public async Task<ActionResult<UserAuthToken>> RefreshToken([FromBody] string refreshToken)
+        public async Task<ActionResult<UserAuthToken>> RefreshToken([FromBody] UserRefreshToken request)
         {
-            return await _authService.RefreshToken(refreshToken);
+            return await _authService.RefreshToken(request);
         }
 
         /// <summary> log-out the user by invalidating the tokens. </summary>
