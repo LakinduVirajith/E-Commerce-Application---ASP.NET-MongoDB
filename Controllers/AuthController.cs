@@ -10,11 +10,11 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly IUserService _userService;
+        private readonly IAuthService _authService;
 
-        public AuthController(IUserService userService)
+        public AuthController(IAuthService authService)
         {
-            _userService = userService;
+            _authService = authService;
         }
 
         /// <summary> registers a new user in the system. </summary>
@@ -22,7 +22,39 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] UserRegister userDto)
         {
-            return await _userService.RegisterUser(userDto);
+            return await _authService.RegisterUser(userDto);
+        }
+
+        /// <summary> logs in an existing user.</summary>
+        // POST: api/v1/auth/login
+        [HttpPost("login")]
+        public async Task<ActionResult<UserToken>> Login([FromBody] UserLogin loginDto)
+        {
+            return await _authService.LoginUser(loginDto);
+        }
+
+        /// <summary> activates a registered user (email confirmation). </summary>
+        // PUT: api/v1/auth/activate
+        [HttpPut("activate")]
+        public async Task<IActionResult> Activate([FromQuery] string activationCode)
+        {
+            return await _userService.ActivateUser(activationCode);
+        }
+
+        /// <summary> refreshes the access token using a valid refresh token. </summary>
+        // PUT: api/v1/auth/refresh-token
+        [HttpPut("refresh-token")]
+        public async Task<ActionResult<UserToken>> RefreshToken([FromBody] string refreshToken)
+        {
+            return await _authService.RefreshToken(refreshToken);
+        }
+
+        /// <summary> log-out the user by invalidating the tokens. </summary>
+        // GET: api/v1/auth/logout
+        [HttpGet("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            return await _authService.LogoutUser();
         }
     }
 }

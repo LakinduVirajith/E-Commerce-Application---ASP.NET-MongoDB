@@ -8,16 +8,16 @@ using System.Data;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 {
-    public class UserService : IUserService
+    public class AuthService : IAuthService
     {
         private readonly IMongoCollection<User> _usersCollection;
         private readonly CommonService _commonService;
 
-        public UserService(MongoDbService mongoDbService, CommonService commonService)
+        public AuthService(MongoDbService mongoDbService, CommonService commonService)
         {
             _usersCollection = mongoDbService.GetCollection<User>("user");
             _commonService = commonService;
-        }
+        }     
 
         // 1. METHOD TO REGISTER A NEW USER
         public async Task<IActionResult> RegisterUser(UserRegister userDto)
@@ -56,6 +56,26 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             // INSERT THE NEW USER INTO THE COLLECTION
             await _usersCollection.InsertOneAsync(user);
             return new OkObjectResult("User registered successfully!");
+        }
+
+        public async Task<ActionResult<UserToken>> LoginUser(UserLogin loginDto)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<IActionResult> ActivateUser(string activationCode)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<ActionResult<UserToken>> RefreshToken(string refreshToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<IActionResult> LogoutUser()
+        {
+            throw new NotImplementedException();
         }
     }
 }

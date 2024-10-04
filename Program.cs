@@ -21,7 +21,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB
             builder.Services.AddSingleton<MongoDbService>();
             builder.Services.AddScoped<CommonService>();
             builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
-            builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
 
             // 3. SWAGGER CONFIGURATION
             builder.Services.AddSwaggerGen(c =>
