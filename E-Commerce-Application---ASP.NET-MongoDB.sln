@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35122.118
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EAD-Backend-Application--.NET-MongoDB", "EAD-Backend-Application--.NET-MongoDB.csproj", "{9F4ABA4D-F6F4-4B4E-9B41-F7FC3FA6F448}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "E-Commerce-Application---ASP.NET-MongoDB", "E-Commerce-Application---ASP.NET-MongoDB.csproj", "{49FA2187-1F5D-466A-A73E-DC816ED21688}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9F4ABA4D-F6F4-4B4E-9B41-F7FC3FA6F448}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9F4ABA4D-F6F4-4B4E-9B41-F7FC3FA6F448}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9F4ABA4D-F6F4-4B4E-9B41-F7FC3FA6F448}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9F4ABA4D-F6F4-4B4E-9B41-F7FC3FA6F448}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49FA2187-1F5D-466A-A73E-DC816ED21688}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49FA2187-1F5D-466A-A73E-DC816ED21688}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49FA2187-1F5D-466A-A73E-DC816ED21688}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49FA2187-1F5D-466A-A73E-DC816ED21688}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {B2A01AC0-240F-4CF9-840A-EE28D43C8F05}
+		SolutionGuid = {19C85CD5-A8E3-4B53-8399-22419EAD01F2}
 	EndGlobalSection
 EndGlobal
