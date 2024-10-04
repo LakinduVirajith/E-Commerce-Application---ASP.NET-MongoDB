@@ -1,5 +1,6 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.DTOs;
 using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 {
@@ -21,6 +22,18 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         public string GenerateActivationToken()
         {
             return Guid.NewGuid().ToString();
+        }
+
+        // METHOD TO VALIDATE A MAC ADDRESS FORMAT.
+        public bool IsValidMacAddress(string macAddress)
+        {
+            if (string.IsNullOrWhiteSpace(macAddress))
+            {
+                return false;
+            }
+
+            string macPattern = @"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$";
+            return Regex.IsMatch(macAddress, macPattern);
         }
 
         // METHOD TO VALIDATE ANY DTO AND RETURN THE FIRST ERROR MESSAGE FOUND

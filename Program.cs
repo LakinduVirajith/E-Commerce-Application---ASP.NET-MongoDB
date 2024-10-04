@@ -21,6 +21,8 @@ namespace E_Commerce_Application___ASP.NET_MongoDB
             // 2. DEPENDENCY INJECTION
             builder.Services.AddSingleton<MongoDbService>();
             builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
+            builder.Services.AddScoped<MailService>();
+            builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
             builder.Services.AddSingleton<TokenService>();
             builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
             builder.Services.AddScoped<CommonService>();
@@ -85,7 +87,12 @@ namespace E_Commerce_Application___ASP.NET_MongoDB
             }
 
             app.UseHttpsRedirection();
+
+            // ENABLE AUTHENTICATION AND AUTHORIZATION MIDDLEWARE
+            app.UseAuthentication();
             app.UseAuthorization();
+
+            // MAP CONTROLLERS
             app.MapControllers();
 
             app.Run();

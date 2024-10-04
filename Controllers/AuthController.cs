@@ -1,6 +1,7 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.DTOs;
 using E_Commerce_Application___ASP.NET_MongoDB.Models;
 using E_Commerce_Application___ASP.NET_MongoDB.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 
@@ -50,8 +51,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Controllers
         }
 
         /// <summary> log-out the user by invalidating the tokens. </summary>
-        // GET: api/v1/auth/logout
-        [HttpGet("logout")]
+        // PUT: api/v1/auth/logout
+        [HttpPut("logout")]
+        [Authorize]
         public async Task<IActionResult> Logout([FromQuery] string deviceId)
         {
             return await _authService.LogoutUser(deviceId);

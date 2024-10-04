@@ -3,23 +3,36 @@ using E_Commerce_Application___ASP.NET_MongoDB.Enums;
 using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
 using E_Commerce_Application___ASP.NET_MongoDB.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using System.Security.Claims;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 {
     public class AuthService : IAuthService
     {
         private readonly IMongoCollection<User> _usersCollection;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly JwtSettings _jwtSettings;
         private readonly CommonService _commonService;
         private readonly TokenService _tokenService;
-        private readonly JwtSettings _jwtSettings;
+        private readonly MailService _mailService;
 
-        public AuthService(MongoDbService mongoDbService, CommonService commonService, TokenService tokenService, JwtSettings jwtSettings)
+
+        public AuthService(
+            MongoDbService mongoDbService,
+            IHttpContextAccessor httpContextAccessor,
+            IOptions<JwtSettings> jwtSettings,
+            CommonService commonService, 
+            TokenService tokenService,
+            MailService mailService)
         {
             _usersCollection = mongoDbService.GetCollection<User>("user");
+            _httpContextAccessor = httpContextAccessor;
+            _jwtSettings = jwtSettings.Value;
             _commonService = commonService;
             _tokenService = tokenService;
-            _jwtSettings = jwtSettings;
+            _mailService = mailService;
         }     
 
         // 1. METHOD TO REGISTER A NEW USER
@@ -68,6 +81,10 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 
                 // INSERT THE NEW USER INTO THE COLLECTION
                 await _usersCollection.InsertOneAsync(user);
+
+                // SEND ACTIVATION EMAIL
+                await _mailService.SendActivationEmail(user.Email, user.ActivationToken.Token);
+
                 return new OkObjectResult("User registered successfully! Please check your email to activate your account.");
             }
             catch (Exception)
@@ -86,6 +103,12 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             // FIND THE USER BY USERNAME OR EMAIL
             var user = await _usersCollection.Find(u => u.Username == loginDto.Username || u.Email == loginDto.Username).FirstOrDefaultAsync();
 
+            // VALIDATE THE DEVICE ID FORMAT
+            if (!_commonService.IsValidMacAddress(loginDto.DeviceId))
+            {
+                return new BadRequestObjectResult("Invalid device ID format.");
+            }
+
             // CHECK IF THE USER EXISTS AND VALIDATE PASSWORD
             if (user == null || !_commonService.VerifyPassword(user.Password, loginDto.Password))
             {
@@ -103,7 +126,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             var refreshToken = _tokenService.GenerateRefreshToken(user);
 
             // CHECK IF DEVICE ID ALREADY EXISTS
-            var existingAuthToken = user.AuthTokens.FirstOrDefault(t => t.DeviceId == loginDto.deviceId);
+            var existingAuthToken = user.AuthTokens.FirstOrDefault(t => t.DeviceId == loginDto.DeviceId);
             if (existingAuthToken != null)
             {
                 // UPDATE EXISTING AUTH TOKEN
@@ -120,7 +143,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 {
                     AccessToken = token,
                     RefreshToken = refreshToken,
-                    DeviceId = loginDto.deviceId,
+                    DeviceId = loginDto.DeviceId,
                     Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes),
                     RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays),
                     LastUsed = DateTime.UtcNow
@@ -175,6 +198,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             }
         }
 
+        // 4. METHOD TO GENERATE AUTH TOKENS USING REFRESH TOKEN
         public async Task<ActionResult<UserAuthToken>> RefreshToken(UserRefreshToken request)
         {
             try
@@ -193,6 +217,12 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 if (authToken == null || authToken.RefreshTokenExpiry < DateTime.UtcNow)
                 {
                     return new BadRequestObjectResult("Refresh token is invalid or expired.");
+                }
+
+                // VALIDATE THE DEVICE ID FORMAT
+                if (!_commonService.IsValidMacAddress(request.DeviceId))
+                {
+                    return new BadRequestObjectResult("Invalid device ID format.");
                 }
 
                 // GENERATE NEW ACCESS TOKEN AND REFRESH TOKEN
@@ -228,17 +258,35 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             }
         }
 
+        // 5. METHOD TO LOGOUT A USER
         public async Task<IActionResult> LogoutUser(string deviceId)
         {
             try
             {
-                // FIND THE USER BY DEVICE ID
-                var user = await _usersCollection.Find(u => u.AuthTokens.Any(t => t.DeviceId == deviceId)).FirstOrDefaultAsync();
+                // GET THE EMAIL FROM AUTHENTICATION HEADER
+                var email = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Email)?.Value;
 
+                // CHECK IF EMAIL IS NULL
+                if (string.IsNullOrEmpty(email))
+                {
+                    return new NotFoundObjectResult(new { Status = "Error", Message = "User not found. Please ensure you are logged in." });
+                }
+
+                // VALIDATE THE DEVICE ID FORMAT
+                if (!_commonService.IsValidMacAddress(deviceId))
+                {
+                    return new BadRequestObjectResult("Invalid device ID format.");
+                }
+
+                // FIND THE USER BY EMAIL AND DEVICE ID
+                var user = await _usersCollection
+                    .Find(u => u.Email == email && u.AuthTokens.Any(t => t.DeviceId == deviceId))
+                    .FirstOrDefaultAsync();
+               
                 // CHECK IF USER EXISTS
                 if (user == null)
                 {
-                    return new BadRequestObjectResult("User not found.");
+                    return new BadRequestObjectResult("User not found. Please ensure you are logged in.");
                 }
 
                 // REMOVE THE AUTH TOKEN FOR THE SPECIFIED DEVICE ID
