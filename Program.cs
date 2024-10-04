@@ -1,5 +1,6 @@
 using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
 using E_Commerce_Application___ASP.NET_MongoDB.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 
@@ -19,8 +20,10 @@ namespace E_Commerce_Application___ASP.NET_MongoDB
 
             // 2. DEPENDENCY INJECTION
             builder.Services.AddSingleton<MongoDbService>();
-            builder.Services.AddScoped<CommonService>();
             builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
+            builder.Services.AddSingleton<TokenService>();
+            builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+            builder.Services.AddScoped<CommonService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
 
             // 3. SWAGGER CONFIGURATION

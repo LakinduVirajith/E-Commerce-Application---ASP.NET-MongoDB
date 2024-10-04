@@ -21,10 +21,13 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Models
         public string Password { get; set; } = string.Empty;
 
         [BsonElement("role")]
-        public String Role { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
 
         [BsonElement("activation_token")]
         public ActivationToken ActivationToken { get; set; } = new ActivationToken();
+
+        [BsonElement("auth_tokens")]
+        public List<AuthToken> AuthTokens { get; set; } = new List<AuthToken>();
 
         [BsonElement("shipping_addresses")]
         public List<ShippingAddress> ShippingAddresses { get; set; } = new List<ShippingAddress>();

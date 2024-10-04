@@ -1,5 +1,6 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.DTOs;
 using E_Commerce_Application___ASP.NET_MongoDB.Enums;
+using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
 using E_Commerce_Application___ASP.NET_MongoDB.Models;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
@@ -12,11 +13,13 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
     {
         private readonly IMongoCollection<User> _usersCollection;
         private readonly CommonService _commonService;
+        private readonly TokenService _tokenService;
 
-        public AuthService(MongoDbService mongoDbService, CommonService commonService)
+        public AuthService(MongoDbService mongoDbService, CommonService commonService, TokenService tokenService)
         {
             _usersCollection = mongoDbService.GetCollection<User>("user");
             _commonService = commonService;
+            _tokenService = tokenService;
         }     
 
         // 1. METHOD TO REGISTER A NEW USER
@@ -80,7 +83,41 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         // 2. METHOD TO LOGIN A USER
         public async Task<ActionResult<UserAuthToken>> LoginUser(UserLogin loginDto)
         {
-            throw new NotImplementedException();
+            // FIND THE USER BY USERNAME OR EMAIL
+            var user = await _usersCollection.Find(u => u.Username == loginDto.Username || u.Email == loginDto.Username).FirstOrDefaultAsync();
+
+            // CHECK IF THE USER EXISTS AND VALIDATE PASSWORD
+            if (user == null || !_commonService.VerifyPassword(user.Password, loginDto.Password))
+            {
+                return new BadRequestObjectResult("Invalid username or password.");
+            }
+
+            // GENERATE JWT AND REFRESH TOKEN
+            var token = _tokenService.GenerateToken(user);
+            var refreshToken = _tokenService.GenerateRefreshToken(user);
+
+            // STORE THE REFRESH TOKEN IN DATABASE (OPTIONAL)
+            var authToken = new AuthToken
+            {
+                AccessToken = token,
+                RefreshToken = refreshToken,
+                DeviceId = loginDto.deviceId,
+                Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes),
+                RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays),
+                LastUsed = DateTime.UtcNow
+            };
+
+            user.AuthTokens.Add(authToken);
+            await _usersCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
+
+            // RETURN THE TOKENS
+            var authTokenResponse = new UserAuthToken
+            {
+                AccessToken = token,
+                RefreshToken = refreshToken,
+            };
+
+            return new OkObjectResult(authTokenResponse);
         }
 
         // 3. METHOD TO ACTIVATE A USER ACCOUNT

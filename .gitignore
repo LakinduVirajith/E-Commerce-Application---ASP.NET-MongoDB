@@ -125,3 +125,6 @@ Test-Secrets.txt
 Properties/ServiceDependencies
 Properties/PublishProfiles/EAD-Backend-Application - Web Deploy.pubxml
 Properties/serviceDependencies.EAD-Backend-Application - Web Deploy.json
+
+# Secret files
+appsecret.json
