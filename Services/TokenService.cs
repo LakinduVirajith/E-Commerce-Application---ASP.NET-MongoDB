@@ -1,9 +1,7 @@
-﻿using E_Commerce_Application___ASP.NET_MongoDB.Enums;
-using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
+﻿using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
 using E_Commerce_Application___ASP.NET_MongoDB.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;

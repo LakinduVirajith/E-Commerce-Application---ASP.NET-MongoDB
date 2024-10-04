@@ -4,8 +4,6 @@ using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
 using E_Commerce_Application___ASP.NET_MongoDB.Models;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
-using System.ComponentModel.DataAnnotations;
-using System.Data;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 {
@@ -14,12 +12,14 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         private readonly IMongoCollection<User> _usersCollection;
         private readonly CommonService _commonService;
         private readonly TokenService _tokenService;
+        private readonly JwtSettings _jwtSettings;
 
-        public AuthService(MongoDbService mongoDbService, CommonService commonService, TokenService tokenService)
+        public AuthService(MongoDbService mongoDbService, CommonService commonService, TokenService tokenService, JwtSettings jwtSettings)
         {
             _usersCollection = mongoDbService.GetCollection<User>("user");
             _commonService = commonService;
             _tokenService = tokenService;
+            _jwtSettings = jwtSettings;
         }     
 
         // 1. METHOD TO REGISTER A NEW USER
@@ -39,7 +39,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 }
 
                 // CHECK IF THE ROLE IS VALID
-                if (!Enum.IsDefined(typeof(UserRole), userDto.Role))
+                if (!Enum.IsDefined(typeof(UserRole), validationDto.Role))
                 {
                     return new BadRequestObjectResult("Invalid role. Please provide a valid role.");
                 }
@@ -49,10 +49,6 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 _commonService.MapProperties(validationDto, user);
                 user.Password = _commonService.HashPassword(userDto.Password); // HASH THE PASSWORD
                 user.IsActive = false;
-
-                // GENERATE ACTIVATION TOKEN AND SET EXPIRY (10 MINUTES)
-                user.ActivationToken.Token = _commonService.GenerateActivationToken();
-                user.ActivationToken.Expiry = DateTime.UtcNow.AddMinutes(10);
 
                 // CHECK IF A USER WITH THE SAME EMAIL OR USERNAME ALREADY EXISTS
                 var existingUserByEmail = await _usersCollection.Find(u => u.Email == user.Email).FirstOrDefaultAsync();
@@ -65,6 +61,10 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 {
                     return new ConflictObjectResult("Username is already taken.");
                 }
+
+                // GENERATE ACTIVATION TOKEN AND SET EXPIRY (10 MINUTES)
+                user.ActivationToken.Token = _commonService.GenerateActivationToken();
+                user.ActivationToken.Expiry = DateTime.UtcNow.AddMinutes(10);                
 
                 // INSERT THE NEW USER INTO THE COLLECTION
                 await _usersCollection.InsertOneAsync(user);
@@ -92,22 +92,44 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 return new BadRequestObjectResult("Invalid username or password.");
             }
 
+            // CHECK IF THE USER IS ACTIVATED
+            if (!user.IsActive)
+            {
+                return new BadRequestObjectResult("Your account is not activated. Please activate your account before logging in.");
+            }
+
             // GENERATE JWT AND REFRESH TOKEN
             var token = _tokenService.GenerateToken(user);
             var refreshToken = _tokenService.GenerateRefreshToken(user);
 
-            // STORE THE REFRESH TOKEN IN DATABASE (OPTIONAL)
-            var authToken = new AuthToken
+            // CHECK IF DEVICE ID ALREADY EXISTS
+            var existingAuthToken = user.AuthTokens.FirstOrDefault(t => t.DeviceId == loginDto.deviceId);
+            if (existingAuthToken != null)
             {
-                AccessToken = token,
-                RefreshToken = refreshToken,
-                DeviceId = loginDto.deviceId,
-                Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes),
-                RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays),
-                LastUsed = DateTime.UtcNow
-            };
+                // UPDATE EXISTING AUTH TOKEN
+                existingAuthToken.AccessToken = token;
+                existingAuthToken.RefreshToken = refreshToken;
+                existingAuthToken.Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes);
+                existingAuthToken.RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays);
+                existingAuthToken.LastUsed = DateTime.UtcNow;
+            }
+            else
+            {
+                // CREATE A NEW AUTH TOKEN IF DEVICE ID DOES NOT EXIST
+                var authToken = new AuthToken
+                {
+                    AccessToken = token,
+                    RefreshToken = refreshToken,
+                    DeviceId = loginDto.deviceId,
+                    Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes),
+                    RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays),
+                    LastUsed = DateTime.UtcNow
+                };
 
-            user.AuthTokens.Add(authToken);
+                user.AuthTokens.Add(authToken);
+            }
+
+            // UPDATE THE USER IN THE DATABASE
             await _usersCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
 
             // RETURN THE TOKENS
@@ -146,7 +168,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             catch (Exception)
             {
                 // RETURN A FRIENDLY SERVER ERROR MESSAGE
-                return new ObjectResult("An error occurred while saving the user. Please try again later.")
+                return new ObjectResult("An error occurred while activating the user. Please try again later.")
                 {
                     StatusCode = StatusCodes.Status500InternalServerError
                 };

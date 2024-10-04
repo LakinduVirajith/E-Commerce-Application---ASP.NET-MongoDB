@@ -5,25 +5,25 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 {
     public class CommonService
     {
-        // 1. METHOD TO HASH PASSWORD USING BCrypt
+        // METHOD TO HASH PASSWORD USING BCrypt
         public string HashPassword(string password)
         {
             return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
-        // 2. METHOD TO VERIFY PASSWORD
+        // METHOD TO VERIFY PASSWORD
         public bool VerifyPassword(string storedPassword, string inputPassword)
         {
             return BCrypt.Net.BCrypt.Verify(inputPassword, storedPassword);
         }
 
-        // 3. METHOD TO GENERATE A RANDOM TOKEN
+        // METHOD TO GENERATE A RANDOM TOKEN
         public string GenerateActivationToken()
         {
             return Guid.NewGuid().ToString();
         }
 
-        // 4. GENERIC METHOD TO VALIDATE ANY DTO
+        // METHOD TO VALIDATE ANY DTO AND RETURN THE FIRST ERROR MESSAGE FOUND
         public string? ValidateDto<T>(T dto)
         {
             if (dto == null)
@@ -37,14 +37,13 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             bool isValid = Validator.TryValidateObject(dto, context, results, true);
             if (!isValid)
             {
-                // RETURN THE FIRST ERROR MESSAGE FOUND
                 return results.First().ErrorMessage;
             }
 
-            return null; // NO VALIDATION ERRORS
+            return null;
         }
 
-        // 3. GENERIC METHOD FOR MAPPING PROPERTIES FROM ONE OBJECT TO ANOTHER
+        // GENERIC METHOD FOR MAPPING PROPERTIES FROM ONE OBJECT TO ANOTHER
         public void MapProperties<TSource, TDestination>(TSource source, TDestination destination)
         {
             var sourceProperties = typeof(TSource).GetProperties();

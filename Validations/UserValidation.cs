@@ -20,6 +20,6 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.DTOs
         public string Password { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Role is required.")]
-        public String Role { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
     }
 }
