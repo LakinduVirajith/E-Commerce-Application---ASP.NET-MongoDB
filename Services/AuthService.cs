@@ -228,9 +228,34 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             }
         }
 
-        public async Task<IActionResult> LogoutUser()
+        public async Task<IActionResult> LogoutUser(string deviceId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                // FIND THE USER BY DEVICE ID
+                var user = await _usersCollection.Find(u => u.AuthTokens.Any(t => t.DeviceId == deviceId)).FirstOrDefaultAsync();
+
+                // CHECK IF USER EXISTS
+                if (user == null)
+                {
+                    return new BadRequestObjectResult("User not found.");
+                }
+
+                // REMOVE THE AUTH TOKEN FOR THE SPECIFIED DEVICE ID
+                var update = Builders<User>.Update.PullFilter(u => u.AuthTokens, t => t.DeviceId == deviceId);
+
+                // UPDATE USER DOCUMENT IN THE DATABASE
+                await _usersCollection.UpdateOneAsync(u => u.Id == user.Id, update);
+                return new OkObjectResult("User logged out successfully!");
+            }
+            catch (Exception)
+            {
+                // RETURN A FRIENDLY SERVER ERROR MESSAGE
+                return new ObjectResult("An error occurred while logging out. Please try again later.")
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
         }
     }
 }

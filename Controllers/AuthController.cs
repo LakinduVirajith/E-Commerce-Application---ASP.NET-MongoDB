@@ -52,9 +52,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Controllers
         /// <summary> log-out the user by invalidating the tokens. </summary>
         // GET: api/v1/auth/logout
         [HttpGet("logout")]
-        public async Task<IActionResult> Logout()
+        public async Task<IActionResult> Logout([FromQuery] string deviceId)
         {
-            return await _authService.LogoutUser();
+            return await _authService.LogoutUser(deviceId);
         }
     }
 }

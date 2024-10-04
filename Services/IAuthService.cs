@@ -9,6 +9,6 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         Task<ActionResult<UserAuthToken>> LoginUser(UserLogin loginDto);
         Task<IActionResult> ActivateUser(string activationToken);
         Task<ActionResult<UserAuthToken>> RefreshToken(UserRefreshToken request);
-        Task<IActionResult> LogoutUser();
+        Task<IActionResult> LogoutUser(string deviceId);
     }
 }
