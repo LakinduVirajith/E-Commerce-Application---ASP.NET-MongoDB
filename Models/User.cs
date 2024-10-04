@@ -1,6 +1,7 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson;
 using E_Commerce_Application___ASP.NET_MongoDB.Enums;
+using System;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Models
 {
@@ -21,6 +22,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Models
 
         [BsonElement("role")]
         public String Role { get; set; } = string.Empty;
+
+        [BsonElement("activation_token")]
+        public ActivationToken ActivationToken { get; set; } = new ActivationToken();
 
         [BsonElement("shipping_addresses")]
         public List<ShippingAddress> ShippingAddresses { get; set; } = new List<ShippingAddress>();

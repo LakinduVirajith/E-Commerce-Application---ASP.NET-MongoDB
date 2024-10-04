@@ -11,7 +11,13 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
-        // 2. GENERIC METHOD TO VALIDATE ANY DTO
+        // 2. METHOD TO GENERATE A RANDOM TOKEN
+        public string GenerateActivationToken()
+        {
+            return Guid.NewGuid().ToString();
+        }
+
+        // 3. GENERIC METHOD TO VALIDATE ANY DTO
         public string? ValidateDto<T>(T dto)
         {
             if (dto == null)
