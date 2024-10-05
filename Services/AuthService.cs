@@ -77,15 +77,21 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 
                 // GENERATE ACTIVATION TOKEN AND SET EXPIRY (10 MINUTES)
                 user.ActivationToken.Token = _commonService.GenerateActivationToken();
-                user.ActivationToken.Expiry = DateTime.UtcNow.AddMinutes(10);                
-
-                // INSERT THE NEW USER INTO THE COLLECTION
-                await _usersCollection.InsertOneAsync(user);
+                user.ActivationToken.Expiry = DateTime.UtcNow.AddMinutes(10);
 
                 // SEND ACTIVATION EMAIL
-                await _mailService.SendActivationEmailAsync(user.Email, user.ActivationToken.Token);
+                var emailStatus =  await _mailService.SendActivationEmailAsync(user.Email, user.Username, user.ActivationToken.Token);
 
-                return new OkObjectResult("User registered successfully! Please check your email to activate your account.");
+                // INSERT THE NEW USER INTO THE COLLECTION
+                if (emailStatus)
+                {
+                    await _usersCollection.InsertOneAsync(user);
+                    return new OkObjectResult("User registered successfully! Please check your email to activate your account.");
+                }
+                else
+                {
+                    return new BadRequestObjectResult("User registered, but failed to send activation email. Please try again.");
+                }
             }
             catch (Exception)
             {

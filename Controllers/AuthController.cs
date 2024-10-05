@@ -35,8 +35,8 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Controllers
         }
 
         /// <summary> activates a registered user (email confirmation). </summary>
-        // PUT: api/v1/auth/activate
-        [HttpPut("activate")]
+        // GET: api/v1/auth/activate?token={token}
+        [HttpGet("activate")]
         public async Task<IActionResult> Activate([FromQuery] string token)
         {
             return await _authService.ActivateUser(token);

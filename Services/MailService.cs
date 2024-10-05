@@ -9,8 +9,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
     {
         private readonly SmtpClient _smtpClient;
         private readonly string _domain;
-        private readonly string _email;
+        private readonly string _compnayEmail;
 
+        // CONSTRUCTOR TO SET UP SMTP CLIENT
         public MailService(IOptions<SmtpSettings> smtpSettings)
         {
             _smtpClient = new SmtpClient
@@ -20,22 +21,39 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 Credentials = new System.Net.NetworkCredential(smtpSettings.Value.Username, smtpSettings.Value.Password),
                 EnableSsl = smtpSettings.Value.EnableSsl
             };
+
+            // SET DOMAIN AND COMPANY EMAIL FROM SMTP SETTINGS
             _domain = smtpSettings.Value.Domain;
-            _email = smtpSettings.Value.Username;
+            _compnayEmail = smtpSettings.Value.Username;
         }
 
-        public async Task SendActivationEmailAsync(string toMail, string token)
+        // ASYNCHRONOUS METHOD TO SEND ACTIVATION EMAIL
+        public async Task<bool> SendActivationEmailAsync(string toMail, string userName, string token)
         {
-
-            var activationLink = $"{_domain}/api/v1/auth/activate?token={token}";
-            var mailMessage = new MailMessage(_email, toMail)
+            try
             {
-                Subject = "Activate Your Account",
-                Body = $"Please click the following link to activate your account: <a href='{activationLink}'>Activate</a>",
-                IsBodyHtml = true
-            };
+                var activationLink = $"{_domain}/api/v1/auth/activate?token={token}";  // ACTIVATION LINK
 
-            await _smtpClient.SendMailAsync(mailMessage);
+                string htmlBody = await File.ReadAllTextAsync("Templates/ActivationEmailTemplate.html");
+
+                // REPLACE PLACEHOLDERS WITH USER NAME AND ACTIVATION LINK
+                htmlBody = htmlBody.Replace("{userName}", userName);
+                htmlBody = htmlBody.Replace("{activationLink}", activationLink);
+
+                var mailMessage = new MailMessage(_compnayEmail, toMail)
+                {
+                    Subject = "Activate Your Account",
+                    Body = htmlBody,
+                    IsBodyHtml = true
+                };
+
+                await _smtpClient.SendMailAsync(mailMessage);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

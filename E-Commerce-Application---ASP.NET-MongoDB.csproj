@@ -8,8 +8,8 @@
     <RootNamespace>E_Commerce_Application___ASP.NET_MongoDB</RootNamespace>
     <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-	<GenerateDocumentationFile>true</GenerateDocumentationFile>
-	<NoWarn>${NoWarn};1591</NoWarn>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>${NoWarn};1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

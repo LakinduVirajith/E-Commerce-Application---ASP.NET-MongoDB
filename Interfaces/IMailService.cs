@@ -2,6 +2,6 @@
 {
     public interface IMailService
     {
-        Task SendActivationEmailAsync(string toMail, string token);
+        Task<bool> SendActivationEmailAsync(string toMail, string userName, string token);
     }
 }
