@@ -1,7 +1,7 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
-namespace E_Commerce_Application___ASP.NET_MongoDB.Services
+namespace E_Commerce_Application___ASP.NET_MongoDB.Interfaces
 {
     public interface IAuthService
     {

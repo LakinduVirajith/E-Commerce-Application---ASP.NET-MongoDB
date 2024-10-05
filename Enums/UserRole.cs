@@ -3,8 +3,8 @@
     public enum UserRole
     {
         Admin,
-        Customer,
         Vendor,
+        Customer,
         Support,
         Delivery,
         Marketing,

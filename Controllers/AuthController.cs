@@ -1,6 +1,6 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.DTOs;
+using E_Commerce_Application___ASP.NET_MongoDB.Interfaces;
 using E_Commerce_Application___ASP.NET_MongoDB.Models;
-using E_Commerce_Application___ASP.NET_MongoDB.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
@@ -37,9 +37,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Controllers
         /// <summary> activates a registered user (email confirmation). </summary>
         // PUT: api/v1/auth/activate
         [HttpPut("activate")]
-        public async Task<IActionResult> Activate([FromQuery] string activationToken)
+        public async Task<IActionResult> Activate([FromQuery] string token)
         {
-            return await _authService.ActivateUser(activationToken);
+            return await _authService.ActivateUser(token);
         }
 
         /// <summary> refreshes the access token using a valid refresh token. </summary>

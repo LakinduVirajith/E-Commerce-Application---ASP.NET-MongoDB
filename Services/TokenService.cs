@@ -1,4 +1,5 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
+using E_Commerce_Application___ASP.NET_MongoDB.Interfaces;
 using E_Commerce_Application___ASP.NET_MongoDB.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -8,7 +9,7 @@ using System.Text;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 {
-    public class TokenService
+    public class TokenService : ITokenService
     {
         private readonly JwtSettings _jwtSettings;
 

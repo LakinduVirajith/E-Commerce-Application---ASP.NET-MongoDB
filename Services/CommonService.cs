@@ -1,10 +1,11 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.DTOs;
+using E_Commerce_Application___ASP.NET_MongoDB.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 {
-    public class CommonService
+    public class CommonService : ICommonService
     {
         // METHOD TO HASH PASSWORD USING BCrypt
         public string HashPassword(string password)
@@ -12,16 +13,16 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
-        // METHOD TO VERIFY PASSWORD
-        public bool VerifyPassword(string storedPassword, string inputPassword)
-        {
-            return BCrypt.Net.BCrypt.Verify(inputPassword, storedPassword);
-        }
-
         // METHOD TO GENERATE A RANDOM TOKEN
         public string GenerateActivationToken()
         {
             return Guid.NewGuid().ToString();
+        }
+
+        // METHOD TO VERIFY PASSWORD
+        public bool IsVerifyPassword(string storedPassword, string inputPassword)
+        {
+            return BCrypt.Net.BCrypt.Verify(inputPassword, storedPassword);
         }
 
         // METHOD TO VALIDATE A MAC ADDRESS FORMAT.

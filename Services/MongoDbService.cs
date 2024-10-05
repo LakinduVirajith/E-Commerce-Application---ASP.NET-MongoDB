@@ -1,10 +1,11 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
+using E_Commerce_Application___ASP.NET_MongoDB.Interfaces;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 {
-    public class MongoDbService
+    public class MongoDbService: IMongoDbService
     {
         private readonly IMongoDatabase _database;
 

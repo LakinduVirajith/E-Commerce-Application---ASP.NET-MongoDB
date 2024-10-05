@@ -1,4 +1,5 @@
 using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
+using E_Commerce_Application___ASP.NET_MongoDB.Interfaces;
 using E_Commerce_Application___ASP.NET_MongoDB.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
@@ -19,14 +20,17 @@ namespace E_Commerce_Application___ASP.NET_MongoDB
 
 
             // 2. DEPENDENCY INJECTION
-            builder.Services.AddSingleton<MongoDbService>();
+            builder.Services.AddSingleton<IMongoDbService , MongoDbService>();
             builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
-            builder.Services.AddScoped<MailService>();
+            builder.Services.AddSingleton<IMailService, MailService>();
             builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
-            builder.Services.AddSingleton<TokenService>();
+            builder.Services.AddSingleton<ITokenService, TokenService>();
             builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-            builder.Services.AddScoped<CommonService>();
+            builder.Services.AddSingleton<ICommonService, CommonService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+
+            // ADD THIS LINE TO REGISTER IHttpContextAccessor
+            builder.Services.AddHttpContextAccessor();
 
             // 3. SWAGGER CONFIGURATION
             builder.Services.AddSwaggerGen(c =>

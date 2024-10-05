@@ -1,6 +1,7 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.DTOs;
 using E_Commerce_Application___ASP.NET_MongoDB.Enums;
 using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
+using E_Commerce_Application___ASP.NET_MongoDB.Interfaces;
 using E_Commerce_Application___ASP.NET_MongoDB.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -13,26 +14,25 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
     {
         private readonly IMongoCollection<User> _usersCollection;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IMailService _mailService;
+        private readonly ICommonService _commonService;
+        private readonly ITokenService _tokenService;
         private readonly JwtSettings _jwtSettings;
-        private readonly CommonService _commonService;
-        private readonly TokenService _tokenService;
-        private readonly MailService _mailService;
-
 
         public AuthService(
-            MongoDbService mongoDbService,
+            IMongoDbService mongoDbService,
             IHttpContextAccessor httpContextAccessor,
-            IOptions<JwtSettings> jwtSettings,
-            CommonService commonService, 
-            TokenService tokenService,
-            MailService mailService)
+            IMailService mailService,
+            ICommonService commonService, 
+            ITokenService tokenService,
+            IOptions<JwtSettings> jwtSettings)
         {
             _usersCollection = mongoDbService.GetCollection<User>("user");
             _httpContextAccessor = httpContextAccessor;
-            _jwtSettings = jwtSettings.Value;
+            _mailService = mailService;
             _commonService = commonService;
             _tokenService = tokenService;
-            _mailService = mailService;
+            _jwtSettings = jwtSettings.Value;
         }     
 
         // 1. METHOD TO REGISTER A NEW USER
@@ -83,7 +83,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 await _usersCollection.InsertOneAsync(user);
 
                 // SEND ACTIVATION EMAIL
-                await _mailService.SendActivationEmail(user.Email, user.ActivationToken.Token);
+                await _mailService.SendActivationEmailAsync(user.Email, user.ActivationToken.Token);
 
                 return new OkObjectResult("User registered successfully! Please check your email to activate your account.");
             }
@@ -110,7 +110,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             }
 
             // CHECK IF THE USER EXISTS AND VALIDATE PASSWORD
-            if (user == null || !_commonService.VerifyPassword(user.Password, loginDto.Password))
+            if (user == null || !_commonService.IsVerifyPassword(user.Password, loginDto.Password))
             {
                 return new BadRequestObjectResult("Invalid username or password.");
             }
@@ -166,12 +166,12 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         }
 
         // 3. METHOD TO ACTIVATE A USER ACCOUNT
-        public async Task<IActionResult> ActivateUser(string activationToken)
+        public async Task<IActionResult> ActivateUser(string token)
         {
             try
             {
                 // FIND THE USER BY ACTIVATION TOKEN
-                var user = await _usersCollection.Find(u => u.ActivationToken.Token == activationToken).FirstOrDefaultAsync();
+                var user = await _usersCollection.Find(u => u.ActivationToken.Token == token).FirstOrDefaultAsync();
 
                 // CHECK IF USER EXISTS AND IF TOKEN IS VALID (NOT EXPIRED)
                 if (user == null || user.ActivationToken.Expiry < DateTime.UtcNow)
