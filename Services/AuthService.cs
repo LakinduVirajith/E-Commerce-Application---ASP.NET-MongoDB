@@ -68,11 +68,11 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 var existingUserByUsername = await _usersCollection.Find(u => u.Username == user.Username).FirstOrDefaultAsync();
                 if (existingUserByEmail != null)
                 {
-                    return new ConflictObjectResult("Email is already registered.");
+                    return new ConflictObjectResult("The email address provided is already associated with an existing account.");
                 }
                 if (existingUserByUsername != null)
                 {
-                    return new ConflictObjectResult("Username is already taken.");
+                    return new ConflictObjectResult("The username is already taken. Please use deferent username.");
                 }
 
                 // GENERATE ACTIVATION TOKEN AND SET EXPIRY (10 MINUTES)
@@ -90,12 +90,11 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 }
                 else
                 {
-                    return new BadRequestObjectResult("User registered, but failed to send activation email. Please try again.");
+                    return new BadRequestObjectResult("User registration failed because we were unable to send the activation email.Please try again.");
                 }
             }
             catch (Exception)
             {
-                // RETURN A FRIENDLY SERVER ERROR MESSAGE
                 return new ObjectResult("An error occurred while saving the user. Please try again later.")
                 {
                     StatusCode = StatusCodes.Status500InternalServerError
@@ -106,69 +105,90 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         // 2. METHOD TO LOGIN A USER
         public async Task<ActionResult<UserAuthToken>> LoginUser(UserLogin loginDto)
         {
-            // FIND THE USER BY USERNAME OR EMAIL
-            var user = await _usersCollection.Find(u => u.Username == loginDto.Username || u.Email == loginDto.Username).FirstOrDefaultAsync();
-
-            // VALIDATE THE DEVICE ID FORMAT
-            if (!_commonService.IsValidMacAddress(loginDto.DeviceId))
+            try
             {
-                return new BadRequestObjectResult("Invalid device ID format.");
-            }
+                // VALIDATE THE DEVICE ID FORMAT
+                if (!_commonService.IsValidMacAddress(loginDto.DeviceId))
+                {
+                    return new BadRequestObjectResult("Invalid device ID format.");
+                }
 
-            // CHECK IF THE USER EXISTS AND VALIDATE PASSWORD
-            if (user == null || !_commonService.IsVerifyPassword(user.Password, loginDto.Password))
-            {
-                return new BadRequestObjectResult("Invalid username or password.");
-            }
+                // FIND THE USER BY USERNAME OR EMAIL
+                var user = await _usersCollection.Find(u => u.Username == loginDto.Username || u.Email == loginDto.Username).FirstOrDefaultAsync();
+            
+                if (user == null || !_commonService.IsVerifyPassword(user.Password, loginDto.Password))
+                {
+                    return new BadRequestObjectResult("Invalid username or password.");
+                }
 
-            // CHECK IF THE USER IS ACTIVATED
-            if (!user.IsActive)
-            {
-                return new BadRequestObjectResult("Your account is not activated. Please activate your account before logging in.");
-            }
+                if (!user.IsActive)
+                {
+                    // GENERATE ACTIVATION TOKEN AND SET EXPIRY (10 MINUTES)
+                    user.ActivationToken.Token = _commonService.GenerateActivationToken();
+                    user.ActivationToken.Expiry = DateTime.UtcNow.AddMinutes(10);
 
-            // GENERATE JWT AND REFRESH TOKEN
-            var token = _tokenService.GenerateToken(user);
-            var refreshToken = _tokenService.GenerateRefreshToken(user);
+                    var emailStatus = await _mailService.SendActivationEmailAsync(user.Email, user.Username, user.ActivationToken.Token);
+                    if (emailStatus)
+                    {
+                        await _usersCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
+                        return new BadRequestObjectResult("Your account is not activated. Please activate your account before logging in.");
+                    }
+                    else
+                    {
+                        return new BadRequestObjectResult("Your account is not activated, and we were unable to send the activation email.Please try again.");
+                    }                
+                }
 
-            // CHECK IF DEVICE ID ALREADY EXISTS
-            var existingAuthToken = user.AuthTokens.FirstOrDefault(t => t.DeviceId == loginDto.DeviceId);
-            if (existingAuthToken != null)
-            {
-                // UPDATE EXISTING AUTH TOKEN
-                existingAuthToken.AccessToken = token;
-                existingAuthToken.RefreshToken = refreshToken;
-                existingAuthToken.Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes);
-                existingAuthToken.RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays);
-                existingAuthToken.LastUsed = DateTime.UtcNow;
-            }
-            else
-            {
-                // CREATE A NEW AUTH TOKEN IF DEVICE ID DOES NOT EXIST
-                var authToken = new AuthToken
+                // GENERATE JWT AND REFRESH TOKEN
+                var token = _tokenService.GenerateToken(user);
+                var refreshToken = _tokenService.GenerateRefreshToken(user);
+
+                // CHECK IF DEVICE ID ALREADY EXISTS
+                var existingAuthToken = user.AuthTokens.FirstOrDefault(t => t.DeviceId == loginDto.DeviceId);
+                if (existingAuthToken != null)
+                {
+                    // UPDATE EXISTING AUTH TOKEN
+                    existingAuthToken.AccessToken = token;
+                    existingAuthToken.RefreshToken = refreshToken;
+                    existingAuthToken.Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes);
+                    existingAuthToken.RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays);
+                    existingAuthToken.LastUsed = DateTime.UtcNow;
+                }
+                else
+                {
+                    // CREATE A NEW AUTH TOKEN IF DEVICE ID DOES NOT EXIST
+                    var authToken = new AuthToken
+                    {
+                        AccessToken = token,
+                        RefreshToken = refreshToken,
+                        DeviceId = loginDto.DeviceId,
+                        Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes),
+                        RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays),
+                        LastUsed = DateTime.UtcNow
+                    };
+
+                    user.AuthTokens.Add(authToken);
+                }
+
+                // UPDATE THE USER IN THE DATABASE
+                await _usersCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
+
+                // RETURN THE TOKENS
+                var authTokenResponse = new UserAuthToken
                 {
                     AccessToken = token,
                     RefreshToken = refreshToken,
-                    DeviceId = loginDto.DeviceId,
-                    Expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes),
-                    RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays),
-                    LastUsed = DateTime.UtcNow
                 };
 
-                user.AuthTokens.Add(authToken);
+                return new OkObjectResult(authTokenResponse);
             }
-
-            // UPDATE THE USER IN THE DATABASE
-            await _usersCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
-
-            // RETURN THE TOKENS
-            var authTokenResponse = new UserAuthToken
+            catch (Exception)
             {
-                AccessToken = token,
-                RefreshToken = refreshToken,
-            };
-
-            return new OkObjectResult(authTokenResponse);
+                return new ObjectResult("An error occurred while login the user. Please try again later.")
+                {
+                    StatusCode = StatusCodes.Status500InternalServerError
+                };
+            }
         }
 
         // 3. METHOD TO ACTIVATE A USER ACCOUNT
@@ -182,7 +202,12 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 // CHECK IF USER EXISTS AND IF TOKEN IS VALID (NOT EXPIRED)
                 if (user == null || user.ActivationToken.Expiry < DateTime.UtcNow)
                 {
-                    return new BadRequestObjectResult("Invalid or expired activation token.");
+                    return new ContentResult
+                    {
+                        Content = await File.ReadAllTextAsync("Templates/ActivationFailed.html"),
+                        ContentType = "text/html",
+                        StatusCode = StatusCodes.Status400BadRequest
+                    };
                 }
 
                 // UPDATE USER AS ACTIVE AND CLEAR ACTIVATION TOKEN
@@ -192,14 +217,21 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 
                 // UPDATE USER DOCUMENT IN THE DATABASE
                 await _usersCollection.UpdateOneAsync(u => u.Id == user.Id, update);
-                return new OkObjectResult("User activated successfully!");
+
+                return new ContentResult
+                {
+                    Content = await File.ReadAllTextAsync("Templates/ActivationSuccess.html"),
+                    ContentType = "text/html",
+                    StatusCode = StatusCodes.Status200OK
+                };
             }
             catch (Exception)
             {
-                // RETURN A FRIENDLY SERVER ERROR MESSAGE
-                return new ObjectResult("An error occurred while activating the user. Please try again later.")
+                return new ContentResult
                 {
-                    StatusCode = StatusCodes.Status500InternalServerError
+                    Content = await File.ReadAllTextAsync("Templates/ActivationFailed.html"),
+                    ContentType = "text/html",
+                    StatusCode = StatusCodes.Status400BadRequest
                 };
             }
         }

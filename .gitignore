@@ -128,3 +128,4 @@ Properties/serviceDependencies.EAD-Backend-Application - Web Deploy.json
 
 # Secret files
 appsecret.json
+testdata.json

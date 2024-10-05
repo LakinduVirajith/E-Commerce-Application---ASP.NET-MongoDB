@@ -1,7 +1,5 @@
 ﻿using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson;
-using E_Commerce_Application___ASP.NET_MongoDB.Enums;
-using System;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Models
 {

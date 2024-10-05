@@ -1,9 +1,7 @@
 ﻿using E_Commerce_Application___ASP.NET_MongoDB.DTOs;
 using E_Commerce_Application___ASP.NET_MongoDB.Interfaces;
-using E_Commerce_Application___ASP.NET_MongoDB.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB.Controllers
 {

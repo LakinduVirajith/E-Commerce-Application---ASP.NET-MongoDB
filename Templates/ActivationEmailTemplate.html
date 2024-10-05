@@ -4,48 +4,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activate Your Account</title>
+    <title>Activate Your Account | VP ShopZone</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f7f7f7;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
         }
 
         .container {
-            width: 100%;
             max-width: 600px;
-            margin: auto;
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         h1 {
-            color: #333;
+            color: #333333;
             text-align: center;
-            margin-bottom: 20px;
+            font-size: 24px;
         }
 
         p {
             font-size: 16px;
-            color: #555;
-            line-height: 1.5;
+            color: #555555;
+            line-height: 1.6;
         }
 
         .button {
-            display: inline-block;
-            padding: 12px 20px;
-            margin: 20px 0;
-            background: #007bff;
+            display: block;
+            width: 100%;
+            max-width: 200px;
+            margin: 30px auto;
+            padding: 15px 20px;
+            background-color: #007bff;
             color: #ffffff;
             text-decoration: none;
             border-radius: 5px;
-            font-weight: bold;
             text-align: center;
-            transition: background-color 0.3s;
+            font-weight: bold;
+            font-size: 18px;
         }
 
             .button:hover {
@@ -54,24 +55,33 @@
 
         .footer {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 30px;
             font-size: 12px;
-            color: #aaa;
+            color: #888888;
         }
+
+            .footer a {
+                color: #888888;
+                text-decoration: none;
+            }
+
+                .footer a:hover {
+                    color: #555555;
+                }
     </style>
 </head>
 
 <body>
     <div class="container">
         <h1>Activate Your Account</h1>
-        <p>Dear {userName},</p>
-        <p>Thank you for registering with VP E-Commerce! We're excited to have you on board.</p>
-        <p>Please click the button below to activate your account and get started:</p>
-        <a class="button" href="{activationLink}">Activate Account</a>
-        <p>If you did not create an account with us, no further action is required.</p>
-        <p>Thank you for choosing us!</p>
+        <p>Hello {userName},</p>
+        <p>Welcome to <strong>VP ShopZone</strong>! To complete your registration and start shopping with us, please confirm your email address by clicking the button below. This link is valid for the next 10 minutes.</p>
+        <a href="{activationLink}" class="button" style="color: #ffffff;">Activate My Account</a>
+        <p>If you didn't request this email, no further action is required, and your account will not be activated.</p>
         <div class="footer">
-            <p>&copy; 2024 VP E-Commerce. All Rights Reserved.</p>
+            <p>Need help? Contact our <a href="mailto:support@vpshopzone.com">Support Team</a></p>
+            <p>&copy; 2024 VP ShopZone. All rights reserved.</p>
+            <p>VP ShopZone | Leading the Future of E-Commerce</p>
         </div>
     </div>
 </body>
