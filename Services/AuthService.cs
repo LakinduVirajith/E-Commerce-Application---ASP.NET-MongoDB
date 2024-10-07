@@ -18,6 +18,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         private readonly ICommonService _commonService;
         private readonly ITokenService _tokenService;
         private readonly JwtSettings _jwtSettings;
+        private readonly ILogger<AuthService> _logger;
 
         public AuthService(
             IMongoDbService mongoDbService,
@@ -25,7 +26,8 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             IMailService mailService,
             ICommonService commonService, 
             ITokenService tokenService,
-            IOptions<JwtSettings> jwtSettings)
+            IOptions<JwtSettings> jwtSettings,
+            ILogger<AuthService> logger)
         {
             _usersCollection = mongoDbService.GetCollection<User>("user");
             _httpContextAccessor = httpContextAccessor;
@@ -33,16 +35,17 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
             _commonService = commonService;
             _tokenService = tokenService;
             _jwtSettings = jwtSettings.Value;
+            _logger = logger;
         }     
 
         // 1. METHOD TO REGISTER A NEW USER
-        public async Task<IActionResult> RegisterUser(UserRegister userDto)
+        public async Task<IActionResult> RegisterAsync(UserRegister registerDto)
         {
             try
             {
                 // MAP DTO TO VALIDATION DTO
                 var validationDto = new UserValidation();
-                _commonService.MapProperties(userDto, validationDto);
+                _commonService.MapProperties(registerDto, validationDto);
 
                 // VALIDATE DTO PROPERTIES
                 var validationError = _commonService.ValidateDto(validationDto);
@@ -60,7 +63,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 // MAP VALIDATION DTO TO A USER MODEL
                 var user = new User();
                 _commonService.MapProperties(validationDto, user);
-                user.Password = _commonService.HashPassword(userDto.Password); // HASH THE PASSWORD
+                user.Password = _commonService.HashPassword(validationDto.Password); // HASH THE PASSWORD
                 user.IsActive = false;
 
                 // CHECK IF A USER WITH THE SAME EMAIL OR USERNAME ALREADY EXISTS
@@ -93,8 +96,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                     return new BadRequestObjectResult("User registration failed because we were unable to send the activation email.Please try again.");
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex.ToString());
                 return new ObjectResult("An error occurred while saving the user. Please try again later.")
                 {
                     StatusCode = StatusCodes.Status500InternalServerError
@@ -103,7 +107,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         }
 
         // 2. METHOD TO LOGIN A USER
-        public async Task<ActionResult<UserAuthToken>> LoginUser(UserLogin loginDto)
+        public async Task<ActionResult<UserAuthToken>> LoginAsync(UserLogin loginDto)
         {
             try
             {
@@ -182,8 +186,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 
                 return new OkObjectResult(authTokenResponse);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex.ToString());
                 return new ObjectResult("An error occurred while login the user. Please try again later.")
                 {
                     StatusCode = StatusCodes.Status500InternalServerError
@@ -192,7 +197,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         }
 
         // 3. METHOD TO ACTIVATE A USER ACCOUNT
-        public async Task<IActionResult> ActivateUser(string token)
+        public async Task<IActionResult> ActivateAsync(string token)
         {
             try
             {
@@ -225,8 +230,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                     StatusCode = StatusCodes.Status200OK
                 };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex.ToString());
                 return new ContentResult
                 {
                     Content = await File.ReadAllTextAsync("Templates/ActivationFailed.html"),
@@ -237,17 +243,21 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         }
 
         // 4. METHOD TO GENERATE AUTH TOKENS USING REFRESH TOKEN
-        public async Task<ActionResult<UserAuthToken>> RefreshToken(UserRefreshToken request)
+        public async Task<ActionResult<UserAuthToken>> RefreshTokenAsync(UserRefreshToken request)
         {
             try
             {
+                // VALIDATE THE DEVICE ID FORMAT
+                if (!_commonService.IsValidMacAddress(request.DeviceId))
+                {
+                    return new BadRequestObjectResult("Invalid device ID format.");
+                }
+
                 // FIND THE USER BY THE REFRESH TOKEN
                 var user = await _usersCollection.Find(u => u.AuthTokens.Any(t => t.RefreshToken == request.RefreshToken && t.DeviceId == request.DeviceId)).FirstOrDefaultAsync();
-
-                // CHECK IF USER EXISTS AND IF REFRESH TOKEN IS VALID
                 if (user == null)
                 {
-                    return new BadRequestObjectResult("Invalid refresh token.");
+                    return new BadRequestObjectResult("Invalid refresh token request.");
                 }
 
                 // FIND THE AUTH TOKEN BY DEVICE ID
@@ -255,12 +265,6 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 if (authToken == null || authToken.RefreshTokenExpiry < DateTime.UtcNow)
                 {
                     return new BadRequestObjectResult("Refresh token is invalid or expired.");
-                }
-
-                // VALIDATE THE DEVICE ID FORMAT
-                if (!_commonService.IsValidMacAddress(request.DeviceId))
-                {
-                    return new BadRequestObjectResult("Invalid device ID format.");
                 }
 
                 // GENERATE NEW ACCESS TOKEN AND REFRESH TOKEN
@@ -274,8 +278,17 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 authToken.RefreshTokenExpiry = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays);
                 authToken.LastUsed = DateTime.UtcNow;
 
-                // UPDATE USER IN THE DATABASE
-                await _usersCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
+                // UPDATE THE AUTH TOKEN IN THE DATABASE
+                await _usersCollection.UpdateOneAsync(
+                    u => u.Id == user.Id &&
+                         u.AuthTokens.Any(t => t.RefreshToken == request.RefreshToken && t.DeviceId == request.DeviceId),
+                    Builders<User>.Update
+                        .Set("AuthTokens.$.AccessToken", newToken)
+                        .Set("AuthTokens.$.RefreshToken", newRefreshToken)
+                        .Set("AuthTokens.$.Expiry", DateTime.UtcNow.AddMinutes(_jwtSettings.TokenExpiryInMinutes))
+                        .Set("AuthTokens.$.RefreshTokenExpiry", DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays))
+                        .Set("AuthTokens.$.LastUsed", DateTime.UtcNow)
+                );
 
                 // RETURN THE NEW TOKENS
                 var authTokenResponse = new UserAuthToken
@@ -286,9 +299,9 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
 
                 return new OkObjectResult(authTokenResponse);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // RETURN A FRIENDLY SERVER ERROR MESSAGE
+                _logger.LogError(ex.ToString());
                 return new ObjectResult("An error occurred while refreshing the token. Please try again later.")
                 {
                     StatusCode = StatusCodes.Status500InternalServerError
@@ -297,10 +310,16 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
         }
 
         // 5. METHOD TO LOGOUT A USER
-        public async Task<IActionResult> LogoutUser(string deviceId)
+        public async Task<IActionResult> LogoutAsync(string deviceId)
         {
             try
             {
+                // VALIDATE THE DEVICE ID FORMAT
+                if (!_commonService.IsValidMacAddress(deviceId))
+                {
+                    return new BadRequestObjectResult("Invalid device ID format.");
+                }
+
                 // GET THE EMAIL FROM AUTHENTICATION HEADER
                 var email = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Email)?.Value;
 
@@ -308,12 +327,6 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 if (string.IsNullOrEmpty(email))
                 {
                     return new NotFoundObjectResult(new { Status = "Error", Message = "User not found. Please ensure you are logged in." });
-                }
-
-                // VALIDATE THE DEVICE ID FORMAT
-                if (!_commonService.IsValidMacAddress(deviceId))
-                {
-                    return new BadRequestObjectResult("Invalid device ID format.");
                 }
 
                 // FIND THE USER BY EMAIL AND DEVICE ID
@@ -334,14 +347,39 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Services
                 await _usersCollection.UpdateOneAsync(u => u.Id == user.Id, update);
                 return new OkObjectResult("User logged out successfully!");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // RETURN A FRIENDLY SERVER ERROR MESSAGE
+                _logger.LogError(ex.ToString());
                 return new ObjectResult("An error occurred while logging out. Please try again later.")
                 {
                     StatusCode = StatusCodes.Status500InternalServerError
                 };
             }
+        }
+
+        public async Task<IActionResult> SendResetPasswordOtpAsync(string email)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<IActionResult> ValidateOtpAsync(UserValidateOtp validateOtpDto)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<IActionResult> ResetPasswordAsync(UserResetPassword resetPasswordDto)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<IActionResult> ChangeEmailAsync(UserChangeEmail changeEmailDto)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<IActionResult> ChangePasswordAsync(UserChangePassword changePasswordDto)
+        {
+            throw new NotImplementedException();
         }
     }
 }

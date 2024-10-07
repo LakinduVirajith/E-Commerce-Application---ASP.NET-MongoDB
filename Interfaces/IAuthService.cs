@@ -5,10 +5,15 @@ namespace E_Commerce_Application___ASP.NET_MongoDB.Interfaces
 {
     public interface IAuthService
     {
-        Task<IActionResult> RegisterUser(UserRegister userDto);
-        Task<ActionResult<UserAuthToken>> LoginUser(UserLogin loginDto);
-        Task<IActionResult> ActivateUser(string activationToken);
-        Task<ActionResult<UserAuthToken>> RefreshToken(UserRefreshToken request);
-        Task<IActionResult> LogoutUser(string deviceId);
+        Task<IActionResult> RegisterAsync(UserRegister registerDto);
+        Task<ActionResult<UserAuthToken>> LoginAsync(UserLogin loginDto);
+        Task<IActionResult> ActivateAsync(string activationToken);
+        Task<ActionResult<UserAuthToken>> RefreshTokenAsync(UserRefreshToken request);
+        Task<IActionResult> LogoutAsync(string deviceId);
+        Task<IActionResult> SendResetPasswordOtpAsync(string email);
+        Task<IActionResult> ValidateOtpAsync(UserValidateOtp validateOtpDto);
+        Task<IActionResult> ResetPasswordAsync(UserResetPassword resetPasswordDto);
+        Task<IActionResult> ChangeEmailAsync(UserChangeEmail changeEmailDto);
+        Task<IActionResult> ChangePasswordAsync(UserChangePassword changePasswordDto);
     }
 }

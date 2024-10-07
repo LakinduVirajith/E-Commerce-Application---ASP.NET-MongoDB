@@ -1,9 +1,12 @@
 using E_Commerce_Application___ASP.NET_MongoDB.Helpers;
 using E_Commerce_Application___ASP.NET_MongoDB.Interfaces;
 using E_Commerce_Application___ASP.NET_MongoDB.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using System.Text;
 
 namespace E_Commerce_Application___ASP.NET_MongoDB
 {
@@ -32,7 +35,35 @@ namespace E_Commerce_Application___ASP.NET_MongoDB
             // ADD THIS LINE TO REGISTER IHttpContextAccessor
             builder.Services.AddHttpContextAccessor();
 
-            // 3. SWAGGER CONFIGURATION
+            // 3. JWT AUTHENTICATION CONFIGURATION
+            var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+            var secret = Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret is not set in configuration."));
+            var expiryInMinutes = double.TryParse(jwtSettings["TokenExpiryInMinutes"], out var minuts) ? minuts : 120;
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.RequireHttpsMetadata = false;
+                options.SaveToken = true;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(secret),
+                    ClockSkew = TimeSpan.FromHours(expiryInMinutes)
+                };
+            });
+
+            // 4. SWAGGER CONFIGURATION
             builder.Services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo
@@ -79,7 +110,7 @@ namespace E_Commerce_Application___ASP.NET_MongoDB
 
             var app = builder.Build();
 
-            // 4. HTTP REQUEST PIPELINE CONFIGURATION
+            // 5. HTTP REQUEST PIPELINE CONFIGURATION
             if (app.Environment.IsDevelopment())
             {
                 // ENABLE SWAGGER IN DEVELOPMENT MODE
